@@ -1,0 +1,45 @@
+
+run rdma_example client/server in aws instance
+
+1. create 2 aws c5n.9xlarge instances with efa interfaces
+
+2. replace the kernel with rdma_ucm.ko compiled (I am using 5.15.0-1035-aws kernel)
+# sudo apt install linux-image-5.15.0-1035-aws linux-aws-headers-5.15.0-1035 linux-modules-5.15.0-1035-aws linux-headers-5.15.0-1035-aws linux-modules-extra-5.15.0-1035-aws
+
+3. create rdma_cm dev node file (without rdma_ucm.ko loaded, this file won't be created) and reboot
+add udev rule in /etc/udev/rules.d/80-local.rules
+KERNEL="rdma_cm", NAME="infiniband/%k", MODE="0666"
+
+this will create the /dev/infiniband/rdma_cm dev node after reboot
+ubuntu@ip-10-0-1-139:~/projects/rdma-example$ ls -l /dev/infiniband/
+total 0
+crw-rw-rw- 1 root root  10, 123 May 14 23:23 rdma_cm
+crw-rw-rw- 1 root root 231, 192 May 14 23:23 uverbs0
+
+check /etc/rdma/modules/rdma.conf, something like below:
+# User access to RDMA verbs (supports libibverbs)
+ib_uverbs
+
+# User access to RDMA connection management (supports librdmacm)
+rdma_ucm
+
+4. try tools in rdma-core
+# ibv_ud_pingpong -g 0 -d rdmap0s6 -i 1 (server)  -- efa only support UD
+# ibv_ud_pingpong -g 0 -d rdmap0s6 -i 1 10.0.1.70 (client)
+
+# rping -s -a 10.0.1.70 -v (server)
+# rping -c -a 10.0.1.70 -v (client)
+
+5. check out rdma_example
+# https://github.com/goldenrye/rdma-example.git 
+
+
+
+commands:
+ - rdma link show
+ - rdma dev show
+ - ibstatus
+ - ibv_devices
+ - ibv_devinfo
+ - ibv_ud_pingpong
+ - rping
